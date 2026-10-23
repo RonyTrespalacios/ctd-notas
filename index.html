@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notas del corte 2 · CTD</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1a1a; --soft: #555; --faint: #888; --line: #e2e2e2; --fill: #f6f6f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121212; --ink: #ededed; --soft: #b0b0b0; --faint: #7d7d7d; --line: #2e2e2e; --fill: #1c1c1c; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 17px/1.55 Georgia, "Times New Roman", serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 40px; }
+  h1 { font-size: 22px; font-weight: normal; margin: 0; }
+  .sub { color: var(--soft); font-size: 15px; margin: 2px 0 20px; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  label { font-size: 15px; color: var(--soft); width: 100%; }
+  input, button { font: 17px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  input {
+    flex: 1 1 180px; max-width: 260px; padding: 10px 12px; border: 1px solid #bbb; border-radius: 4px;
+    background: var(--bg); color: var(--ink);
+  }
+  button {
+    padding: 10px 18px; border: 0; border-radius: 4px; background: var(--ink); color: var(--bg); cursor: pointer;
+  }
+  button:disabled { opacity: .6; }
+  input:focus, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
+  .aviso { color: var(--soft); }
+
+  .resultado { display: grid; grid-template-columns: 340px 1fr; gap: 40px; }
+  .nombre { font-size: 15px; color: var(--soft); margin: 0 0 4px; }
+  .final { font-size: 64px; line-height: 1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+  .final small { font-size: 18px; color: var(--soft); }
+  .explica { font-size: 15px; color: var(--soft); margin: 0 0 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  td { padding: 9px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; font-weight: bold; width: 4em; }
+  .final, td.n, .cuadro, b { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  td .d { display: block; font-size: 14px; color: var(--faint); }
+  h2 { font-size: 18px; font-weight: bold; margin: 0 0 6px; }
+  section + section { margin-top: 22px; }
+  p { margin: 0 0 8px; }
+  .crit { font-size: 16px; }
+  .crit td { padding: 6px 0; }
+  .chico { font-size: 14px; color: var(--faint); }
+  .preg { display: flex; gap: 3px; margin: 8px 0 6px; flex-wrap: wrap; }
+  .preg i { width: 16px; height: 16px; border: 1.5px solid var(--ink); border-radius: 2px; }
+  .preg i.b { background: var(--ink); }
+  .cuadro { background: var(--fill); padding: 10px 14px; border-radius: 4px; margin: 8px 0; }
+
+  @media (max-width: 760px) {
+    body { font-size: 16px; }
+    .wrap { padding: 20px 16px 32px; }
+    .resultado { grid-template-columns: 1fr; gap: 26px; }
+    .final { font-size: 56px; }
+    .preg i { width: 13px; height: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ciencia, Tecnología y Desarrollo</h1>
+  <p class="sub">Notas del corte 2 · Periodo 2026-2 · Ing. Rony Trespalacios</p>
+
+  <form id="f" autocomplete="off">
+    <label for="cod">Escribe tu código estudiantil</label>
+    <input id="cod" inputmode="numeric" maxlength="12" placeholder="Por ejemplo, 160005123" required>
+    <button id="b" type="submit">Ver mis notas</button>
+  </form>
+  <hr>
+  <div id="m"><p class="aviso">Tus notas aparecerán aquí.</p></div>
+</div>
+
+<script>
+const PREFIJO = 'ctd-2026-2-c2|';
+let DATA = null;
+const $ = s => document.querySelector(s);
+const enc = new TextEncoder();
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const fmt = (n, d = 1) => (n === null || n === undefined) ? '—'
+  : Number(n).toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: 2 });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function sha(s) {
+  const h = await crypto.subtle.digest('SHA-256', enc.encode(s));
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function abrir(cod) {
+  if (!DATA) DATA = await (await fetch('data.json', { cache: 'no-store' })).json();
+  const reg = DATA.r[(await sha(PREFIJO + cod)).slice(0, 24)];
+  if (!reg) return null;
+  const base = await crypto.subtle.importKey('raw', enc.encode(PREFIJO + cod), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: b64(reg.s), iterations: DATA.iter, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(reg.i) }, key, b64(reg.c));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+function render(d, cod) {
+  const sis = d.prog === 'sis';
+  const e = d.ensayo;
+  const tres = [d.previas, e.nota, d.taller].filter(v => v !== null && v !== undefined);
+  const otras = tres.reduce((a, b) => a + b, 0) / tres.length;
+  const dp = sis ? 1 : 2;
+
+  // Parcial
+  let parcial;
+  if (sis && d.parcial_det) {
+    const p = d.parcial_det;
+    const cajas = Array.from({ length: 20 }, (_, i) => `<i class="${i < p.buenas ? 'b' : ''}"></i>`).join('');
+    parcial = `<p>De 20 preguntas respondiste bien <b>${p.buenas}</b> y mal <b>${p.malas}</b>.</p>
+      <div class="preg" aria-hidden="true">${cajas}</div>
+      <div class="cuadro">${p.buenas} × 0,25 + 0,5 = <b>${fmt(d.parcial)}</b></div>
+      <p class="chico">Cada respuesta buena vale 0,25. A todos se les sumó 0,5 a la nota final.</p>`;
+  } else if (!sis && d.parcial_estado === 'Finalizado') {
+    parcial = `<p>Nota del cuestionario en Moodle: <b>${fmt(d.parcial, 2)}</b> de 5,00.</p>`;
+  } else {
+    parcial = '<p>No hay registro de que hayas presentado el parcial.</p>';
+  }
+
+  // Ensayo
+  let ensayo;
+  if (e.c === undefined) {
+    ensayo = `<p>${esc(e.obs)}</p>`;
+  } else {
+    const fila = (k, v) => `<tr><td>${k}</td><td class="n">${fmt(v)}</td></tr>`;
+    ensayo = `<table class="crit">
+        ${fila('Comprensión de la lectura', e.c)}
+        ${fila('Aplicación y posición', e.ap)}
+        ${fila('Escritura y referencias', e.e)}
+      </table>
+      <p class="chico">Cada criterio se califica con 5,0, 4,0, 3,0 o 1,5.</p>`;
+    if (!sis && e.sim !== undefined) {
+      ensayo += `<p>Turnitin: similitud <b>${esc(e.sim)}</b> y texto generado por IA <b>${esc(e.ia)}</b>.</p>`;
+    }
+    ensayo += `<p>${esc(e.obs)}</p>`;
+  }
+  let taller = '';
+  if (d.taller_obs) taller = `<section><h2>Taller en clase</h2><p>${esc(d.taller_obs)}</p></section>`;
+  else if (!d.taller) taller = '<section><h2>Taller en clase</h2><p>No figuras en la lista del taller hecho en clase.</p></section>';
+
+  $('#m').innerHTML = `<div class="resultado">
+    <div>
+      <p class="nombre">${esc(d.nombre)} · ${cod} · ${sis ? 'Ingeniería de Sistemas' : 'Ingeniería Agronómica'}</p>
+      <div class="final">${fmt(d.corte)} <small>/ 5,0</small></div>
+      <p class="explica">Nota del corte 2: promedio entre el parcial (${fmt(d.parcial, dp)}) y el promedio de las otras tres notas (${fmt(otras)}).</p>
+      <table>
+        <tr><td>Parcial</td><td class="n">${fmt(d.parcial, dp)}</td></tr>
+        <tr><td>${sis ? 'Talleres previos' : 'Notas previas'}<span class="d">Actividades de las semanas anteriores</span></td><td class="n">${fmt(d.previas)}</td></tr>
+        <tr><td>Ensayo<span class="d">${sis ? 'Informe' : 'Ensayo'} sobre la Lectura 1</span></td><td class="n">${fmt(e.nota)}</td></tr>
+        <tr><td>Taller en clase</td><td class="n">${fmt(d.taller)}</td></tr>
+      </table>
+    </div>
+    <div>
+      <section><h2>Parcial</h2>${parcial}</section>
+      <section><h2>Ensayo</h2>${ensayo}</section>
+      ${taller}
+    </div>
+  </div>`;
+}
+
+$('#f').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const cod = $('#cod').value.replace(/\D/g, '');
+  if (!cod) return;
+  $('#b').disabled = true;
+  $('#m').innerHTML = '<p class="aviso">Buscando…</p>';
+  try {
+    const d = await abrir(cod);
+    if (d) render(d, cod);
+    else $('#m').innerHTML = '<p class="aviso">No encontramos ese código. Revisa que esté completo (9 dígitos). Si sigue sin aparecer, escríbeme por Moodle.</p>';
+  } catch (err) {
+    $('#m').innerHTML = '<p class="aviso">No se pudo cargar la información. Intenta de nuevo en unos minutos.</p>';
+  } finally {
+    $('#b').disabled = false;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Solo se publica la página y los datos cifrados; todo lo demás se ignora.
+*
+!.gitignore
+!.nojekyll
+!index.html
+!data.json
+!README.md
