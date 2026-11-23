@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Notas del corte 2 · CTD</title>
+<title>Notas del corte 3 · CTD</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,7 +80,7 @@
 <body>
 <div class="wrap">
   <h1>Ciencia, Tecnología y Desarrollo</h1>
-  <p class="sub">Notas del corte 2 · Periodo 2026-2 · Ing. Rony Trespalacios</p>
+  <p class="sub">Notas del corte 3 · Periodo 2026-2 · Ing. Rony Trespalacios</p>
 
   <form id="f" autocomplete="off">
     <label for="cod">Escribe tu código estudiantil</label>
@@ -93,7 +93,7 @@
 </div>
 
 <script>
-const PREFIJO = 'ctd-2026-2-c2|';
+const PREFIJO = 'ctd-2026-2-c3|';
 let DATA = null;
 const $ = s => document.querySelector(s);
 const enc = new TextEncoder();
@@ -129,60 +129,44 @@ async function abrir(cod) {
 
 function render(d, cod) {
   const sis = d.prog === 'sis';
-  const e = d.ensayo;
-  const tres = [d.previas, e.nota, d.taller].filter(v => v !== null && v !== undefined);
-  const otras = tres.reduce((a, b) => a + b, 0) / tres.length;
-  const dp = sis ? 1 : 2;
   const [ec, et] = est(d.corte);
 
   let parcial;
-  if (sis && d.parcial_det) {
-    const p = d.parcial_det;
-    const cajas = Array.from({ length: 20 }, (_, i) => `<i class="${i < p.buenas ? 'b' : 'm'}"></i>`).join('');
-    parcial = `<p>De 20 preguntas respondiste bien <b>${p.buenas}</b> y mal <b>${p.malas}</b>.</p>
+  if (d.presento) {
+    const cajas = Array.from({ length: 20 }, (_, i) => `<i class="${i < d.buenas ? 'b' : 'm'}"></i>`).join('');
+    parcial = `<p>De 20 preguntas respondiste bien <b>${d.buenas}</b> y mal <b>${20 - d.buenas}</b>.</p>
       <div class="preg" aria-hidden="true">${cajas}</div>
-      <div class="cuadro">${p.buenas} × 0,25 + 0,5 = <b>${fmt(d.parcial)}</b></div>
-      <p class="chico">Cada respuesta buena vale 0,25. A todos se les sumó 0,5 a la nota final.</p>`;
-  } else if (!sis && d.parcial_estado === 'Finalizado') {
-    parcial = `<p>Nota del cuestionario en Moodle: <b>${fmt(d.parcial, 2)}</b> de 5,00.</p>`;
+      <div class="cuadro">${d.buenas} × 0,25 = <b>${fmt(d.parcial, 2)}</b></div>
+      <p class="chico">Cada respuesta buena vale 0,25.</p>`;
   } else {
-    parcial = '<p>No hay registro de que hayas presentado el parcial.</p>';
+    parcial = '<p>No hay registro de que hayas presentado el parcial 3 en Moodle.</p>';
   }
 
-  let ensayo;
-  if (e.c === undefined) {
-    ensayo = `<p>${esc(e.obs)}</p>`;
-  } else {
-    const fila = (k, v) => `<tr><td>${k}${barra(v)}</td><td class="n">${val(v)}</td></tr>`;
-    ensayo = `<table>${fila('Comprensión de la lectura', e.c)}${fila('Aplicación y posición', e.ap)}${fila('Escritura y referencias', e.e)}</table>
-      <p class="chico">Cada criterio se califica con 5,0, 4,0, 3,0 o 1,5.</p>`;
-    if (!sis && e.sim !== undefined) {
-      const alta = parseInt(e.ia, 10) >= 30;
-      ensayo += `<p>Turnitin: <span class="chip">Similitud ${esc(e.sim)}</span> <span class="chip ${alta ? 'alerta' : ''}">IA ${esc(e.ia)}</span></p>`;
+  const filas = d.acts.map(a => `<tr><td>${esc(a.nombre)}<span class="d">${esc(a.detalle)}</span>${barra(a.nota)}</td><td class="n">${val(a.nota)}</td></tr>`).join('');
+  const secciones = d.acts.map(a => {
+    let extra = '';
+    if (a.grupo && a.estado) {
+      extra = `<p><span class="chip">${esc(a.estado)}</span>`;
+      if (a.nota_grupo !== null && a.nota_grupo !== a.nota) extra += ` <span class="chico">Nota del grupo: ${fmt(a.nota_grupo)}</span>`;
+      extra += '</p>';
     }
-    ensayo += `<p>${esc(e.obs)}</p>`;
-  }
-  let taller = '';
-  if (d.taller_obs) taller = `<section><h2>Taller en clase</h2><p>${esc(d.taller_obs)}</p></section>`;
-  else if (!d.taller) taller = '<section><h2>Taller en clase</h2><p>No figuras en la lista del taller hecho en clase.</p></section>';
+    return `<section><h2>${esc(a.nombre)}</h2>${extra}<p>${esc(a.obs)}</p></section>`;
+  }).join('');
 
   $('#m').innerHTML = `<div class="resultado">
     <div>
       <p class="nombre">${esc(d.nombre)} · ${cod} · ${sis ? 'Ingeniería de Sistemas' : 'Ingeniería Agronómica'}</p>
       <div class="final">${fmt(d.corte)} <small>/ 5,0</small></div>
       <span class="estado ${ec}">${et}</span>
-      <p class="explica">Nota del corte 2: promedio entre el parcial (${fmt(d.parcial, dp)}) y el promedio de las otras tres notas (${fmt(otras)}).</p>
+      <p class="explica">Nota del corte 3: promedio entre el parcial 3 (${fmt(d.parcial, 2)}) y el promedio de las actividades del corte (${fmt(d.prom, 2)}).</p>
       <table>
-        <tr><td>Parcial${barra(d.parcial)}</td><td class="n">${val(d.parcial, dp)}</td></tr>
-        <tr><td>${sis ? 'Talleres previos' : 'Notas previas'}<span class="d">Actividades de las semanas anteriores</span>${barra(d.previas)}</td><td class="n">${val(d.previas)}</td></tr>
-        <tr><td>Ensayo<span class="d">${sis ? 'Informe' : 'Ensayo'} sobre la Lectura 1</span>${barra(e.nota)}</td><td class="n">${val(e.nota)}</td></tr>
-        <tr><td>Taller en clase${barra(d.taller)}</td><td class="n">${val(d.taller)}</td></tr>
+        <tr><td>Parcial 3<span class="d">Cuestionario en Moodle</span>${barra(d.parcial)}</td><td class="n">${val(d.parcial, 2)}</td></tr>
+        ${filas}
       </table>
     </div>
     <div>
-      <section><h2>Parcial</h2>${parcial}</section>
-      <section><h2>Ensayo</h2>${ensayo}</section>
-      ${taller}
+      <section><h2>Parcial 3</h2>${parcial}</section>
+      ${secciones}
     </div>
   </div>`;
 }

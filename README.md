@@ -1,4 +1,4 @@
-# Notas del corte 2 · CTD
+# Notas del corte 3 · CTD
 
 Página estática para que cada estudiante consulte sus notas con su código estudiantil.
 
